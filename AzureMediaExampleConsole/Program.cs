@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ProcessOutputJson;
+using System;
 using System.Configuration;
 using System.IO;
 using System.Linq;
@@ -35,14 +36,15 @@ namespace OCR
             _context = new CloudMediaContext(new Uri(_RESTAPIEndpoint), tokenProvider);
 
             // Run the OCR job.
-            var asset = RunOCRJob(@"C:\supportFiles\OCR\presentation.mp4",
+            var asset = RunOcrJob(@"C:\supportFiles\OCR\presentation.mp4",
                                         @"C:\supportFiles\OCR\config.json");
 
             // Download the job output asset.
             DownloadAsset(asset, @"C:\supportFiles\OCR\Output");
+            ProcessOutputJson.ProcessJsonProgram.Main(new string[0]);
         }
 
-        static IAsset RunOCRJob(string inputMediaFilePath, string configurationFile)
+        static IAsset RunOcrJob(string inputMediaFilePath, string configurationFile)
         {
             // Create an asset and upload the input media file to storage.
             IAsset asset = CreateAssetAndUploadSingleFile(inputMediaFilePath,

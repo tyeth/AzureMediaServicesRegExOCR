@@ -125,5 +125,11 @@
     </None>
     <None Include="packages.config" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ProcessOutputJson\ProcessOutputJson.csproj">
+      <Project>{bf3bdae6-ec05-4018-bce1-21ab4e8bc24e}</Project>
+      <Name>ProcessOutputJson</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

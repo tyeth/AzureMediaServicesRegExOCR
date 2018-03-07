@@ -5,6 +5,8 @@ VisualStudioVersion = 15.0.27130.2036
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureMediaExampleConsole", "AzureMediaExampleConsole\AzureMediaExampleConsole.csproj", "{ED40765F-37C1-4513-B88C-B5D2D01FE9CD}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProcessOutputJson", "ProcessOutputJson\ProcessOutputJson.csproj", "{BF3BDAE6-EC05-4018-BCE1-21AB4E8BC24E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,12 +17,16 @@ Global
 		{ED40765F-37C1-4513-B88C-B5D2D01FE9CD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{ED40765F-37C1-4513-B88C-B5D2D01FE9CD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{ED40765F-37C1-4513-B88C-B5D2D01FE9CD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BF3BDAE6-EC05-4018-BCE1-21AB4E8BC24E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BF3BDAE6-EC05-4018-BCE1-21AB4E8BC24E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BF3BDAE6-EC05-4018-BCE1-21AB4E8BC24E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BF3BDAE6-EC05-4018-BCE1-21AB4E8BC24E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		EnterpriseLibraryConfigurationToolBinariesPath = packages\TransientFaultHandling.Core.5.1.1209.1\lib\NET4
 		SolutionGuid = {A4FCC941-4B77-495D-9FE7-2BCBB75FF505}
+		EnterpriseLibraryConfigurationToolBinariesPath = packages\TransientFaultHandling.Core.5.1.1209.1\lib\NET4
 	EndGlobalSection
 EndGlobal
