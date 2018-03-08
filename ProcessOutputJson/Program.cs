@@ -12,7 +12,7 @@ using Newtonsoft.Json.Linq;
 
 namespace ProcessOutputJson
 {
-    public class ProcessJsonProgram
+    public static class ProcessJsonProgram
     {
         static string _jsonfile = @"c:\SupportFiles\OCR\Output\presentation_videoocr.json";
         static string _videofile = @"c:\SupportFiles\OCR\presentation.mp4";
@@ -52,12 +52,55 @@ namespace ProcessOutputJson
             if (!(File.Exists(_jsonfile) && File.Exists(_videofile)))
                 PrintArgsAndSyntaxAndAwaitEnterKeyThenQuit(args);
 
+            var matches= ExtractRegExMatches();
 
+            ProcessOutputs(needJpegs, needVideo, matches);
+
+
+            Console.ForegroundColor = ConsoleColor.Black;
+            Console.ReadLine();
+
+            //Input the file and regex match according to args.
+            //JArray jsonVal = JArray.Load(
+            //    new JsonTextReader(
+            //        TextReader.Synchronized(
+            //            new StreamReader(_jsonfile)
+            //            )
+            //        )
+            //    ) as JArray;
+
+        }
+
+        private static void ProcessOutputs(bool needJpegs, bool needVideo, List<JToken> matches)
+        {
+            CreateConfigsForMatches();
+            QueueBatchOfTranscodingJobs();
+            AwaitProgress();
+        }
+
+        private static void AwaitProgress()
+        {
+            throw new NotImplementedException();
+        }
+
+        private static void QueueBatchOfTranscodingJobs()
+        {
+            throw new NotImplementedException();
+        }
+
+        private static void CreateConfigsForMatches()
+        {
+            throw new NotImplementedException();
+        }
+
+        private static List<JToken> ExtractRegExMatches()
+        {
+            var matches = new List<JToken>();
             var fileStream = new FileStream(_jsonfile, FileMode.Open);
             var streamJson = new StreamReader(fileStream);
             var strJson = streamJson.ReadToEnd();
-            var matches = _regExPSN.IsMatch(strJson);
-            if (matches)
+            var isMatch = _regExPSN.IsMatch(strJson);
+            if (isMatch)
             {
                 dynamic jsonVal = JValue.Parse(strJson);
 
@@ -68,8 +111,11 @@ namespace ProcessOutputJson
                     foreach (dynamic evtArray in item.events)
                     {
                         if (evtArray == null) continue;
+                        var i = 0;
                         foreach (dynamic evt in evtArray)
                         {
+                            var starttime = item.start + (item.interval * i);
+                            var endtime = starttime + (item.interval * (i + 1));
                             if (evt.region == null) continue;
                             if (evt.region.lines == null) continue;
 
@@ -79,12 +125,16 @@ namespace ProcessOutputJson
                                 {
                                     if (_regExCODE.IsMatch(lineOfText.text.ToString()))
                                     {
+                                        lineOfText.start = starttime;
+                                        lineOfText.end = endtime;
+                                        matches.Add(lineOfText);
+                                        
 
                                         Console.ForegroundColor = ConsoleColor.DarkBlue;
                                         Console.WriteLine(
-                                            $"item.time"+
+                                            $"Start: {starttime} End: {endtime}  " +
                                             JsonConvert.SerializeObject(lineOfText));
-                                    Console.Beep(620,30);
+                                        Console.Beep(620, 30);
 
 
                                         //  "version": 1,
@@ -100,33 +150,26 @@ namespace ProcessOutputJson
                                         //   "duration": 270000,
                                         //   "interval": 135000,
                                         //   "events": [
+                                        //    [
+                                        //      {
+                                        //          "region": {
+                                        //              "language": "English",
+                                        //              "orientation": "Up",
+                                        //              "lines": [
+                                        //              {
+                                        //                  "text":
                                     }
 
                                 }
                             }
-
-                            //Console.ForegroundColor = ConsoleColor.Red;
-                            //Console.WriteLine(JsonConvert.SerializeObject(evt));
-
-
+                            i++;
                         }
-
                     }
                 }
 
-                Console.ForegroundColor = ConsoleColor.Black;
-                Console.ReadLine();
             }
 
-            //Input the file and regex match according to args.
-            //JArray jsonVal = JArray.Load(
-            //    new JsonTextReader(
-            //        TextReader.Synchronized(
-            //            new StreamReader(_jsonfile)
-            //            )
-            //        )
-            //    ) as JArray;
-
+            return matches;
         }
 
         private static void PrintArgsAndSyntaxAndAwaitEnterKeyThenQuit(string[] args, ConsoleColor bgcolor = ConsoleColor.White)
