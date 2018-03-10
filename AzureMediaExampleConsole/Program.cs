@@ -41,7 +41,7 @@ namespace OCR
 
             // Download the job output asset.
             DownloadAsset(asset, @"C:\supportFiles\OCR\Output");
-            ProcessOutputJson.ProcessJsonProgram.Main(new string[0]);
+          //  ProcessOutputJson.ProcessJsonProgram.Main(new string[0]);
         }
 
         static IAsset RunOcrJob(string inputMediaFilePath, string configurationFile)

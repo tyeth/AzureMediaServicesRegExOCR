@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Collections;
+using System.Diagnostics;
 using System.IO;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
@@ -16,11 +17,11 @@ namespace ProcessOutputJson
     {
         static string _jsonfile = @"c:\SupportFiles\OCR\Output\presentation_videoocr.json";
         static string _videofile = @"c:\SupportFiles\OCR\presentation.mp4";
-
+        private static dynamic Jobs;
         static Regex _regExPSN = new Regex("PSN",
             RegexOptions.Compiled | RegexOptions.Multiline);
         static Regex _regExCODE = new Regex(
-                        "([\\w\\d]{4}\\S?\\-\\S?){2}[\\w\\d]{4}",
+                        "([\\w\\d]{4,5}\\S?\\-\\S?){2}[\\w\\d]{3,5}",
             RegexOptions.Compiled | RegexOptions.Multiline);
 
         private static readonly string _exeName = Path.GetFileName(Assembly.GetExecutingAssembly().Location);
@@ -52,7 +53,7 @@ namespace ProcessOutputJson
             if (!(File.Exists(_jsonfile) && File.Exists(_videofile)))
                 PrintArgsAndSyntaxAndAwaitEnterKeyThenQuit(args);
 
-            var matches= ExtractRegExMatches();
+            var matches = ExtractRegExMatches();
 
             ProcessOutputs(needJpegs, needVideo, matches);
 
@@ -73,9 +74,42 @@ namespace ProcessOutputJson
 
         private static void ProcessOutputs(bool needJpegs, bool needVideo, List<JToken> matches)
         {
-            CreateConfigsForMatches();
-            QueueBatchOfTranscodingJobs();
-            AwaitProgress();
+            string uNow = $"{DateTime.UtcNow:O}".Replace(":","");
+
+            var _ffmpeg = Path.GetDirectoryName(_videofile) + "\\ffmpeg\\bin\\ffmpeg.exe";
+            long i = 1;
+            foreach (dynamic item in matches)
+            {
+                double start = item.start;
+                double end = item.end;
+                double timescale= item.timescale;
+                string text = item.text;
+                //var dt = new DateTime();
+                //dt = dt.AddMilliseconds(start);
+                var dt = TimeSpan.FromSeconds(Math.Floor(start /timescale));
+                var t = dt.ToString("g");
+                var de = TimeSpan.FromSeconds(Math.Ceiling(end/timescale));
+                var tso = de - dt;
+                var tsot = tso.TotalSeconds;
+                if (tsot < 3) tsot = 3;
+                var origName = Path.GetFileNameWithoutExtension(_videofile);
+                var _newVideofile = _videofile.Replace(origName, $"out_{uNow}_{i}_{origName}");
+                var args = $"-hwaccel cuvid -i {_videofile} -c:av copy -ss {t} -t {tsot} {_newVideofile}";
+                using (var f = File.OpenWrite(_newVideofile + ".txt"))
+                {
+                    using (var bw = new BinaryWriter(f))
+                    {
+                        var str = ($"\r\n{uNow} {item.text} top:{item.top} left:{item.left} width:{item.width} height:{item.height}\r\r");
+                        bw.Write(str);
+                        bw.Flush();
+                    }
+
+                }
+                Process.Start(_ffmpeg,args);
+                i++;
+            }
+
+            Console.WriteLine($"*** Processed {i-1} records.");
         }
 
         private static void AwaitProgress()
@@ -99,7 +133,7 @@ namespace ProcessOutputJson
             var fileStream = new FileStream(_jsonfile, FileMode.Open);
             var streamJson = new StreamReader(fileStream);
             var strJson = streamJson.ReadToEnd();
-            var isMatch = _regExPSN.IsMatch(strJson);
+            var isMatch = _regExCODE.IsMatch(strJson);
             if (isMatch)
             {
                 dynamic jsonVal = JValue.Parse(strJson);
@@ -114,8 +148,8 @@ namespace ProcessOutputJson
                         var i = 0;
                         foreach (dynamic evt in evtArray)
                         {
-                            var starttime = item.start + (item.interval * i);
-                            var endtime = starttime + (item.interval * (i + 1));
+                            var starttime = (item.start) + ((item.interval ) * i);
+                            var endtime = starttime +    ((item.interval ) * (i + 1));
                             if (evt.region == null) continue;
                             if (evt.region.lines == null) continue;
 
@@ -127,8 +161,9 @@ namespace ProcessOutputJson
                                     {
                                         lineOfText.start = starttime;
                                         lineOfText.end = endtime;
+                                        lineOfText.timescale = jsonVal.timescale;
                                         matches.Add(lineOfText);
-                                        
+
 
                                         Console.ForegroundColor = ConsoleColor.DarkBlue;
                                         Console.WriteLine(

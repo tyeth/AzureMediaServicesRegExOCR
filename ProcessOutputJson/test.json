@@ -1,0 +1,152 @@
+﻿{
+  "version": 1,
+  "timescale": 11988,
+  "offset": 0,
+  "framerate": 29.97,
+  "width": 1280,
+  "height": 720,
+  "totalDuration": 96000,
+  "fragments": [
+    {
+      "start": 0,
+      "duration": 50400
+    },
+    {
+      "start": 50400,
+      "duration": 17600,
+      "interval": 800,
+      "events": [
+        [
+          {
+            "region": {
+              "language": "English",
+              "orientation": "Up",
+              "lines": [
+                {
+                  "text": "FK4M-RDNK-R572",
+                  "left": 230,
+                  "top": 419,
+                  "width": 819,
+                  "height": 74,
+                  "word": [
+                    {
+                      "text": "FK4M-RDNK-R572",
+                      "left": 230,
+                      "top": 419,
+                      "width": 819,
+                      "height": 74,
+                      "confidence": 267
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [
+          {
+            "region": {
+              "language": "English",
+              "orientation": "Up",
+              "lines": [
+                {
+                  "text": "FK4M-RDNK-R572",
+                  "left": 230,
+                  "top": 327,
+                  "width": 819,
+                  "height": 74,
+                  "word": [
+                    {
+                      "text": "FK4M-RDNK-R572",
+                      "left": 230,
+                      "top": 327,
+                      "width": 819,
+                      "height": 74,
+                      "confidence": 284
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [
+          {
+            "region": {
+              "language": "English",
+              "orientation": "Up",
+              "lines": [
+                {
+                  "text": "FK4M-RDNK-R572",
+                  "left": 230,
+                  "top": 324,
+                  "width": 819,
+                  "height": 74,
+                  "word": [
+                    {
+                      "text": "FK4M-RDNK-R572",
+                      "left": 230,
+                      "top": 324,
+                      "width": 819,
+                      "height": 74,
+                      "confidence": 295
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [
+          {
+            "region": {
+              "language": "English",
+              "orientation": "Up",
+              "lines": [
+                {
+                  "text": "FK4M-RDNK-R572",
+                  "left": 230,
+                  "top": 358,
+                  "width": 819,
+                  "height": 74,
+                  "word": [
+                    {
+                      "text": "FK4M-RDNK-R572",
+                      "left": 230,
+                      "top": 358,
+                      "width": 819,
+                      "height": 74,
+                      "confidence": 269
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      ]
+    },
+    {
+      "start": 68000,
+      "duration": 28000
+    }
+  ]
+}
