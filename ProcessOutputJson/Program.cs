@@ -7,7 +7,10 @@ using System.Threading.Tasks;
 using System.Collections;
 using System.Diagnostics;
 using System.IO;
+using System.Net.Mime;
 using System.Text.RegularExpressions;
+using System.Threading;
+using Accord.Video.FFMPEG;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -15,7 +18,8 @@ namespace ProcessOutputJson
 {
     public static class ProcessJsonProgram
     {
-        static string _jsonfile = @"c:\SupportFiles\OCR\Output\presentation_videoocr.json";
+        static string _jsonOcrInputfile = @"c:\SupportFiles\OCR\config.json";
+        static string _jsonOcrOutputfile = @"c:\SupportFiles\OCR\Output\presentation_videoocr.json";
         static string _videofile = @"c:\SupportFiles\OCR\presentation.mp4";
         private static dynamic Jobs;
         static Regex _regExPSN = new Regex("PSN",
@@ -25,6 +29,9 @@ namespace ProcessOutputJson
             RegexOptions.Compiled | RegexOptions.Multiline);
 
         private static readonly string _exeName = Path.GetFileName(Assembly.GetExecutingAssembly().Location);
+
+        private static List<string> _procsToSpawn=new List<string>();
+
         public static void Main(string[] args)
         {
             bool needJpegs = true;
@@ -41,7 +48,7 @@ namespace ProcessOutputJson
                     PrintArgsAndSyntaxAndAwaitEnterKeyThenQuit(args);
                 if (args[1][0] != '/')
                     PrintArgsAndSyntaxAndAwaitEnterKeyThenQuit(args);
-                _jsonfile = args[0];
+                _jsonOcrOutputfile = args[0];
                 _videofile = args[1];
 
             }
@@ -50,8 +57,19 @@ namespace ProcessOutputJson
             if (needVideo && args.All(x => x.ToLowerInvariant() != "/j"))
                 needJpegs = false;
 
-            if (!(File.Exists(_jsonfile) && File.Exists(_videofile)))
+            if (!(File.Exists(_jsonOcrOutputfile) && File.Exists(_videofile)))
                 PrintArgsAndSyntaxAndAwaitEnterKeyThenQuit(args);
+
+            if (args.Any(x => x.ToLowerInvariant() == "/c"))
+            {
+                CreateVideoInputJson();
+                TriggerAzureOCR();
+                PrintScreenOfBgColor(ConsoleColor.Black);
+                Console.WriteLine("*** Done.");
+                Console.WriteLine("*** Created input json and queued azure ocr job.");
+                Environment.Exit(0);
+            }
+
 
             var matches = ExtractRegExMatches();
 
@@ -59,22 +77,56 @@ namespace ProcessOutputJson
 
 
             Console.ForegroundColor = ConsoleColor.Black;
+            Console.WriteLine("> Press enter to exit.");
             Console.ReadLine();
+            
+        }
 
-            //Input the file and regex match according to args.
-            //JArray jsonVal = JArray.Load(
-            //    new JsonTextReader(
-            //        TextReader.Synchronized(
-            //            new StreamReader(_jsonfile)
-            //            )
-            //        )
-            //    ) as JArray;
+        private static void TriggerAzureOCR()
+        {
+            throw new NotImplementedException();
+        }
+
+        private static void CreateVideoInputJson(string language = "English", string textOrientation = "Auto")
+        {
+            using (var v = new VideoFileReader())
+            {
+                v.Open(_videofile);
+                var jsonString =
+                #region json file contents with video width+height inserted
+@"  {
+        ""Version"":1.0, 
+        ""Options"": 
+        {
+            ""AdvancedOutput"":""true"",
+            ""Language"":""" + language + @""", 
+            ""TimeInterval"":""00:00:00.5"",
+            ""TextOrientation"":""" + textOrientation + @""",
+            ""DetectRegions"": [
+                    {
+                       ""Left"": 1,
+                       ""Top"": 1,
+                       ""Width"": " + v.Width + @",
+                       ""Height"": " + v.Height + @"
+                    }
+             ]
+        }
+    }";
+                #endregion
+
+                using (var f = new StreamWriter(_jsonOcrInputfile, false, Encoding.Default))
+                {
+                    f.WriteLine(jsonString);
+
+                }
+                v.Close();
+            } // end of using VideoFileReader
 
         }
 
         private static void ProcessOutputs(bool needJpegs, bool needVideo, List<JToken> matches)
         {
-            string uNow = $"{DateTime.UtcNow:O}".Replace(":","");
+            string uNow = $"{DateTime.UtcNow:O}".Replace(":", "");
 
             var _ffmpeg = Path.GetDirectoryName(_videofile) + "\\ffmpeg\\bin\\ffmpeg.exe";
             long i = 1;
@@ -82,20 +134,31 @@ namespace ProcessOutputJson
             {
                 double start = item.start;
                 double end = item.end;
-                double timescale= item.timescale;
+                double timescale = item.timescale;
                 string text = item.text;
                 //var dt = new DateTime();
                 //dt = dt.AddMilliseconds(start);
-                var dt = TimeSpan.FromSeconds(Math.Floor(start /timescale));
+                var dt = TimeSpan.FromSeconds(Math.Floor(start / timescale));
                 var t = dt.ToString("g");
-                var de = TimeSpan.FromSeconds(Math.Ceiling(end/timescale));
+                var de = TimeSpan.FromSeconds(Math.Ceiling(end / timescale));
                 var tso = de - dt;
                 var tsot = tso.TotalSeconds;
                 if (tsot < 3) tsot = 3;
                 var origName = Path.GetFileNameWithoutExtension(_videofile);
-                var _newVideofile = _videofile.Replace(origName, $"out_{uNow}_{i}_{origName}");
-                var args = $"-hwaccel cuvid -i {_videofile} -c:av copy -ss {t} -t {tsot} {_newVideofile}";
-                using (var f = File.OpenWrite(_newVideofile + ".txt"))
+                var _newSnippetFile = _videofile.Replace(origName, $"out_{uNow}_{i}_{origName}");
+                if (needVideo)
+                {
+
+                    var args = $"-hwaccel cuvid -i {_videofile} -c:av copy -ss {t} -t {tsot} {_newSnippetFile}";
+                    _procsToSpawn.Add(args);
+                }
+
+                if (needJpegs)
+                {
+                    var args = $"-ss {t} -i {_videofile} -qscale:v 4 -frames:v 1 -huffman optimal {_newSnippetFile}.jpg";
+                    _procsToSpawn.Add(args);
+                }
+                using (var f = File.OpenWrite(_newSnippetFile + ".txt"))
                 {
                     using (var bw = new BinaryWriter(f))
                     {
@@ -105,11 +168,27 @@ namespace ProcessOutputJson
                     }
 
                 }
-                Process.Start(_ffmpeg,args);
+
+
                 i++;
             }
 
-            Console.WriteLine($"*** Processed {i-1} records.");
+            Console.WriteLine($"*** Processed {i - 1} records.");
+            Console.WriteLine("Spawning processes...");
+            var c = 0;
+            foreach (var item in _procsToSpawn)
+            {
+                var p = Process.Start(_ffmpeg, item);
+                Console.Write($"Awaiting finish of process #{c} handle:{p.Handle} [Args: ffmpeg {item} ]\n...");
+                do
+                {
+                    Thread.Sleep(500);
+                    Console.Write(".");
+                } while (!p.HasExited);
+                Console.WriteLine("Finished spawned process.");
+                c++;
+            }
+
         }
 
         private static void AwaitProgress()
@@ -130,7 +209,7 @@ namespace ProcessOutputJson
         private static List<JToken> ExtractRegExMatches()
         {
             var matches = new List<JToken>();
-            var fileStream = new FileStream(_jsonfile, FileMode.Open);
+            var fileStream = new FileStream(_jsonOcrOutputfile, FileMode.Open);
             var streamJson = new StreamReader(fileStream);
             var strJson = streamJson.ReadToEnd();
             var isMatch = _regExCODE.IsMatch(strJson);
@@ -148,8 +227,8 @@ namespace ProcessOutputJson
                         var i = 0;
                         foreach (dynamic evt in evtArray)
                         {
-                            var starttime = (item.start) + ((item.interval ) * i);
-                            var endtime = starttime +    ((item.interval ) * (i + 1));
+                            var starttime = (item.start) + ((item.interval) * i);
+                            var endtime = starttime + ((item.interval) * (i + 1));
                             if (evt.region == null) continue;
                             if (evt.region.lines == null) continue;
 
@@ -212,8 +291,17 @@ namespace ProcessOutputJson
             PrintScreenOfBgColor(bgcolor);
             Console.BackgroundColor = bgcolor;
             Console.ForegroundColor = ConsoleColor.Black;
-            Console.WriteLine("Takes an Azure OCR Output json file, matches text against a regex,");
-            Console.WriteLine("and outputs video snippets or jpegs according to the matches.");
+            Console.WriteLine("1) Creates an Azure OCR input json file, from an input video file.");
+            Console.WriteLine("");
+            Console.WriteLine("Syntax:");
+            Console.ForegroundColor = ConsoleColor.DarkYellow;
+            Console.WriteLine($"{_exeName} <OCR input json file> <input video> /c");
+            Console.ForegroundColor = ConsoleColor.Black;
+            Console.WriteLine("");
+            Console.WriteLine("where the input file should be in the same folder as the video file.");
+            Console.WriteLine("\t\tOR...");
+            Console.WriteLine("");
+            Console.WriteLine("2) Takes an Azure OCR Output json file, matches text against a regex,");
             Console.WriteLine();
             Console.WriteLine("Syntax:");
             Console.ForegroundColor = ConsoleColor.DarkYellow;
@@ -224,7 +312,7 @@ namespace ProcessOutputJson
                               + "\n one must also specify the input video and vice-versa.\n" +
                 " /j = jpeg and /v = video, both are optional and request output accordingly.");
             Console.WriteLine();
-            Console.WriteLine($"Default for json file: {_jsonfile}");
+            Console.WriteLine($"Default for json file: {_jsonOcrOutputfile}");
             Console.WriteLine($"Default for video file: {_videofile}");
             Console.WriteLine($"Default for output format is jpeg.");
             Console.WriteLine();
