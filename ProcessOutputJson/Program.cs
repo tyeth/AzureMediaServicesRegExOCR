@@ -19,6 +19,7 @@ namespace ProcessOutputJson
         //tODO: Test .json config creation /c switch.
         //TODO: Change jpeg ffmpeg args to take more than one jpeg, experiment with frames count.
         //TODO: Adjust time format for jpeg ffmpeg args to be exactly when text detected to the millisecond.
+        //TODO: Add option to reduce the quality of output snippets to next lowest quality, or manual quality/scale. Start with 720p if 1080p initially etc.
 
         static string _jsonOcrInputfile = @"c:\SupportFiles\OCR\config.json";
         static string _jsonOcrOutputfile = @"c:\SupportFiles\OCR\Output\presentation_videoocr.json";
