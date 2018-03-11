@@ -3,11 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using System.Threading.Tasks;
-using System.Collections;
 using System.Diagnostics;
 using System.IO;
-using System.Net.Mime;
 using System.Text.RegularExpressions;
 using System.Threading;
 using Accord.Video.FFMPEG;
@@ -18,17 +15,23 @@ namespace ProcessOutputJson
 {
     public static class ProcessJsonProgram
     {
+        //TODO: Add Output to output file paths.
+        //tODO: Test .json config creation /c switch.
+        //TODO: Change jpeg ffmpeg args to take more than one jpeg, experiment with frames count.
+        //TODO: Adjust time format for jpeg ffmpeg args to be exactly when text detected to the millisecond.
+
         static string _jsonOcrInputfile = @"c:\SupportFiles\OCR\config.json";
         static string _jsonOcrOutputfile = @"c:\SupportFiles\OCR\Output\presentation_videoocr.json";
         static string _videofile = @"c:\SupportFiles\OCR\presentation.mp4";
         private static dynamic Jobs;
-        static Regex _regExPSN = new Regex("PSN",
-            RegexOptions.Compiled | RegexOptions.Multiline);
+        //static Regex _regExPSN = new Regex("PSN",
+        //    RegexOptions.Compiled | RegexOptions.Multiline);
         static Regex _regExCODE = new Regex(
                         "([\\w\\d]{4,5}\\S?\\-\\S?){2}[\\w\\d]{3,5}",
             RegexOptions.Compiled | RegexOptions.Multiline);
 
-        private static readonly string _exeName = Path.GetFileName(Assembly.GetExecutingAssembly().Location);
+        private static readonly string ExeName = Path.GetFileName(Assembly.GetExecutingAssembly().Location);
+        static readonly string Ffmpeg = Path.GetDirectoryName(_videofile) + "\\ffmpeg\\bin\\ffmpeg.exe";
 
         private static List<string> _procsToSpawn=new List<string>();
 
@@ -128,16 +131,13 @@ namespace ProcessOutputJson
         {
             string uNow = $"{DateTime.UtcNow:O}".Replace(":", "");
 
-            var _ffmpeg = Path.GetDirectoryName(_videofile) + "\\ffmpeg\\bin\\ffmpeg.exe";
+            
             long i = 1;
             foreach (dynamic item in matches)
             {
                 double start = item.start;
                 double end = item.end;
                 double timescale = item.timescale;
-                string text = item.text;
-                //var dt = new DateTime();
-                //dt = dt.AddMilliseconds(start);
                 var dt = TimeSpan.FromSeconds(Math.Floor(start / timescale));
                 var t = dt.ToString("g");
                 var de = TimeSpan.FromSeconds(Math.Ceiling(end / timescale));
@@ -145,20 +145,23 @@ namespace ProcessOutputJson
                 var tsot = tso.TotalSeconds;
                 if (tsot < 3) tsot = 3;
                 var origName = Path.GetFileNameWithoutExtension(_videofile);
-                var _newSnippetFile = _videofile.Replace(origName, $"out_{uNow}_{i}_{origName}");
+                var newSnippetFile = _videofile.Replace(origName??string.Empty, $"out_{uNow}_{i}_{origName}");
+                string acceleration; // -hwaccel cuvid
+#if DEBUG
+                acceleration = "-threads 8 ";
+#endif
                 if (needVideo)
                 {
-
-                    var args = $"-hwaccel cuvid -i {_videofile} -c:av copy -ss {t} -t {tsot} {_newSnippetFile}";
+                    var args = $"{acceleration}-i {_videofile} -c:av copy -ss {t} -t {tsot} {newSnippetFile}";
                     _procsToSpawn.Add(args);
                 }
 
                 if (needJpegs)
                 {
-                    var args = $"-ss {t} -i {_videofile} -qscale:v 4 -frames:v 1 -huffman optimal {_newSnippetFile}.jpg";
+                    var args = $"{acceleration}-ss {t} -i {_videofile} -qscale:v 4 -frames:v 1 -huffman optimal {newSnippetFile}.jpg";
                     _procsToSpawn.Add(args);
                 }
-                using (var f = File.OpenWrite(_newSnippetFile + ".txt"))
+                using (var f = File.OpenWrite(newSnippetFile + ".txt"))
                 {
                     using (var bw = new BinaryWriter(f))
                     {
@@ -174,38 +177,30 @@ namespace ProcessOutputJson
             }
 
             Console.WriteLine($"*** Processed {i - 1} records.");
+            SpawnProcesses();
+        }
+
+        private static void SpawnProcesses()
+        {
             Console.WriteLine("Spawning processes...");
-            var c = 0;
+            var c = 1;
             foreach (var item in _procsToSpawn)
             {
-                var p = Process.Start(_ffmpeg, item);
-                Console.Write($"Awaiting finish of process #{c} handle:{p.Handle} [Args: ffmpeg {item} ]\n...");
+                var p = Process.Start(Ffmpeg, item);
+                if(p==null)continue;
+                Console.Write(
+                    $"Awaiting finish of process #{c}/{_procsToSpawn.Count} handle:{p.Handle} [Args: ffmpeg {item} ]\n...");
                 do
                 {
                     Thread.Sleep(500);
                     Console.Write(".");
                 } while (!p.HasExited);
-                Console.WriteLine("Finished spawned process.");
+
+                Console.WriteLine($"Spawned process has finished - Code {p.ExitCode}");
                 c++;
             }
-
         }
-
-        private static void AwaitProgress()
-        {
-            throw new NotImplementedException();
-        }
-
-        private static void QueueBatchOfTranscodingJobs()
-        {
-            throw new NotImplementedException();
-        }
-
-        private static void CreateConfigsForMatches()
-        {
-            throw new NotImplementedException();
-        }
-
+        
         private static List<JToken> ExtractRegExMatches()
         {
             var matches = new List<JToken>();
@@ -295,7 +290,7 @@ namespace ProcessOutputJson
             Console.WriteLine("");
             Console.WriteLine("Syntax:");
             Console.ForegroundColor = ConsoleColor.DarkYellow;
-            Console.WriteLine($"{_exeName} <OCR input json file> <input video> /c");
+            Console.WriteLine($"{ExeName} <OCR input json file> <input video> /c");
             Console.ForegroundColor = ConsoleColor.Black;
             Console.WriteLine("");
             Console.WriteLine("where the input file should be in the same folder as the video file.");
@@ -305,7 +300,7 @@ namespace ProcessOutputJson
             Console.WriteLine();
             Console.WriteLine("Syntax:");
             Console.ForegroundColor = ConsoleColor.DarkYellow;
-            Console.WriteLine($"{_exeName} <OCR output json file> <input video> /j /v");
+            Console.WriteLine($"{ExeName} <OCR output json file> <input video> /j /v");
             Console.ForegroundColor = ConsoleColor.Black;
             Console.WriteLine();
             Console.WriteLine("Where all parameters are optional, however if specifying the json,"
@@ -318,7 +313,7 @@ namespace ProcessOutputJson
             Console.WriteLine();
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine("You supplied:");
-            Console.WriteLine($"{_exeName} {String.Join(" ", args)}");
+            Console.WriteLine($"{ExeName} {String.Join(" ", args)}");
             //Console.WriteLine($"{String.Join(" ", Environment.GetCommandLineArgs())}" );
             Console.WriteLine("\r\n");
             Console.ForegroundColor = ConsoleColor.Black;
