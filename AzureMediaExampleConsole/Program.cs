@@ -34,23 +34,30 @@ namespace OCR
             var tokenProvider = new AzureAdTokenProvider(tokenCredentials);
 
             _context = new CloudMediaContext(new Uri(_RESTAPIEndpoint), tokenProvider);
-
+            if(args.Length!=3) throw new ArgumentException("Missing arguments, expecting <video> <config.json> <output folder>");
             // Run the OCR job.
-            var asset = RunOcrJob(@"C:\supportFiles\OCR\presentation.mp4",
-                                        @"C:\supportFiles\OCR\config.json");
+            if (!File.Exists(args[0]) || !File.Exists(args[1]) || !Directory.Exists(args[2]))
+                throw new FileNotFoundException();
+            
+            var asset = RunOcrJob(args[0], args[1]);
+                //@"C:\supportFiles\OCR\presentation.mp4",
+                  //                      @"C:\supportFiles\OCR\config.json");
 
             // Download the job output asset.
-            DownloadAsset(asset, @"C:\supportFiles\OCR\Output");
+            DownloadAsset(asset, args[2]);// @"C:\supportFiles\OCR\Output");
           //  ProcessOutputJson.ProcessJsonProgram.Main(new string[0]);
         }
 
         static IAsset RunOcrJob(string inputMediaFilePath, string configurationFile)
         {
+            Console.WriteLine("* Uploading Asset to Media Services");
+            
             // Create an asset and upload the input media file to storage.
             IAsset asset = CreateAssetAndUploadSingleFile(inputMediaFilePath,
                 "My OCR Input Asset",
                 AssetCreationOptions.None);
 
+            Console.WriteLine("* Creating new Job on Media Services");
             // Declare a new job.
             IJob job = _context.Jobs.Create("My OCR Job");
 
@@ -76,10 +83,11 @@ namespace OCR
 
             // Use the following event handler to check job progress.  
             job.StateChanged += new EventHandler<JobStateChangedEventArgs>(StateChanged);
+            Console.WriteLine("* Launching new Job on Media Services");
 
             // Launch the job.
             job.Submit();
-
+           
             // Check job execution and wait for job to finish.
             Task progressJobTask = job.GetExecutionProgressTask(CancellationToken.None);
 

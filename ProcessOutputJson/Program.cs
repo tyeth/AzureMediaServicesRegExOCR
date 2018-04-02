@@ -21,9 +21,9 @@ namespace ProcessOutputJson
         //TODO: Adjust time format for jpeg ffmpeg args to be exactly when text detected to the millisecond.
         //TODO: Add option to reduce the quality of output snippets to next lowest quality, or manual quality/scale. Start with 720p if 1080p initially etc.
 
-        static string _jsonOcrInputfile = @"c:\SupportFiles\OCR\config.json";
-        static string _jsonOcrOutputfile = @"c:\SupportFiles\OCR\Output\presentation_videoocr.json";
-        static string _videofile = @"c:\SupportFiles\OCR\presentation.mp4";
+        static string _jsonOcrInputfile = @"c:\SupportFiles\OCR\test.mp4.ocrinput.json";
+        static string _jsonOcrOutputfile = @"c:\SupportFiles\OCR\Output\test_videoocr.json";
+        static string _videofile = @"c:\SupportFiles\OCR\test.mp4";
         private static dynamic Jobs;
         //static Regex _regExPSN = new Regex("PSN",
         //    RegexOptions.Compiled | RegexOptions.Multiline);
@@ -139,15 +139,15 @@ namespace ProcessOutputJson
                 double start = item.start;
                 double end = item.end;
                 double timescale = item.timescale;
-                var dt = TimeSpan.FromSeconds(Math.Floor(start / timescale));
+                var dt = TimeSpan.FromMilliseconds(Math.Floor((start*1000) / timescale));//.FromSeconds(Math.Floor(start / timescale));
                 var t = dt.ToString("g");
-                var de = TimeSpan.FromSeconds(Math.Ceiling(end / timescale));
+                var de = TimeSpan.FromMilliseconds(Math.Ceiling((1000*end) / timescale));
                 var tso = de - dt;
                 var tsot = tso.TotalSeconds;
-                if (tsot < 3) tsot = 3;
+                if (tsot < 3) tsot = 3; //make min_vid_clip parameter
                 var origName = Path.GetFileNameWithoutExtension(_videofile);
                 var newSnippetFile = _videofile.Replace(origName??string.Empty, $"out_{uNow}_{i}_{origName}");
-                string acceleration; // -hwaccel cuvid
+                var acceleration=""; // -hwaccel cuvid
 #if DEBUG
                 acceleration = "-threads 8 ";
 #endif
@@ -166,7 +166,7 @@ namespace ProcessOutputJson
                 {
                     using (var bw = new BinaryWriter(f))
                     {
-                        var str = ($"\r\n{uNow} {item.text} top:{item.top} left:{item.left} width:{item.width} height:{item.height}\r\r");
+                        var str = ($"\r\n{uNow} {item.text} top:{item.top} left:{item.left} width:{item.width} height:{item.height}\r\n");
                         bw.Write(str);
                         bw.Flush();
                     }
@@ -217,14 +217,17 @@ namespace ProcessOutputJson
                 foreach (dynamic item in jsonVal.fragments)
                 {
                     if (item.events == null) continue;
+                    int counter = 0;
                     foreach (dynamic evtArray in item.events)
                     {
+                        
                         if (evtArray == null) continue;
-                        var i = 0;
                         foreach (dynamic evt in evtArray)
                         {
-                            var starttime = (item.start) + ((item.interval) * i);
-                            var endtime = starttime + ((item.interval) * (i + 1));
+                            var starttime = (item.start) + ((item.interval) * counter);
+                            var endtime = starttime + ((item.interval));// * (counter + 1));
+                             counter = counter + 1;
+                            Console.WriteLine($"Counter: {counter}");
                             if (evt.region == null) continue;
                             if (evt.region.lines == null) continue;
 
@@ -246,7 +249,7 @@ namespace ProcessOutputJson
                                             JsonConvert.SerializeObject(lineOfText));
                                         Console.Beep(620, 30);
 
-
+                                        #region json example
                                         //  "version": 1,
                                         // "timescale": 90000,
                                         // "offset": 0,
@@ -268,11 +271,11 @@ namespace ProcessOutputJson
                                         //              "lines": [
                                         //              {
                                         //                  "text":
+                                        #endregion json example
                                     }
 
                                 }
                             }
-                            i++;
                         }
                     }
                 }
