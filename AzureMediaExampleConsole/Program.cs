@@ -12,16 +12,16 @@ namespace OCR
     class Program
     {
         // Read values from the App.config file.
-        private static readonly string _AADTenantDomain ;
+        private static readonly string _AADTenantDomain;
         private static readonly string _RESTAPIEndpoint;
-        private static readonly string _AMSClientId ;
-        private static readonly string _AMSClientSecret ;
+        private static readonly string _AMSClientId;
+        private static readonly string _AMSClientSecret;
 
         // Field for service context.
         private static CloudMediaContext _context = null;
 
-         static Program()
-         {
+        static Program()
+        {
             _AADTenantDomain = SafelyGetConfigValue("AMSAADTenantDomain");
             _RESTAPIEndpoint = SafelyGetConfigValue("AMSRESTAPIEndpoint");
             _AMSClientId = SafelyGetConfigValue("AMSClientId");
@@ -31,21 +31,21 @@ namespace OCR
 
         private static string SafelyGetConfigValue(string key)
         {
-            string a="";
+            string a = "";
             try
             {
                 a = Environment.GetEnvironmentVariable(key);
             }
             finally
             {
-                if(string.IsNullOrEmpty(a))a=ConfigurationManager.AppSettings[key];
+                if (string.IsNullOrEmpty(a)) a = ConfigurationManager.AppSettings[key];
             }
             return a;
         }
 
         static void Main(string[] args)
         {
-            
+
             AzureAdTokenCredentials tokenCredentials =
                 new AzureAdTokenCredentials(_AADTenantDomain,
                     new AzureAdClientSymmetricKey(_AMSClientId, _AMSClientSecret),
@@ -54,24 +54,26 @@ namespace OCR
             var tokenProvider = new AzureAdTokenProvider(tokenCredentials);
 
             _context = new CloudMediaContext(new Uri(_RESTAPIEndpoint), tokenProvider);
-            if(args.Length!=3) throw new ArgumentException("Missing arguments, expecting <video> <config.json> <output folder>");
+            if (args.Length != 3) throw new ArgumentException("Missing arguments, expecting <video> <config.json> <output folder>");
             // Run the OCR job.
             if (!File.Exists(args[0]) || !File.Exists(args[1]) || !Directory.Exists(args[2]))
                 throw new FileNotFoundException();
-            
+
             var asset = RunOcrJob(args[0], args[1]);
-                //@"C:\supportFiles\OCR\presentation.mp4",
-                  //                      @"C:\supportFiles\OCR\config.json");
+            //@"C:\supportFiles\OCR\presentation.mp4",
+            //                      @"C:\supportFiles\OCR\config.json");
 
             // Download the job output asset.
             DownloadAsset(asset, args[2]);// @"C:\supportFiles\OCR\Output");
-          //  ProcessOutputJson.ProcessJsonProgram.Main(new string[0]);
+                                          //  ProcessOutputJson.ProcessJsonProgram.Main(new string[0]);
+            Console.WriteLine("Press enter to exit");
+            Console.ReadLine();
         }
 
         static IAsset RunOcrJob(string inputMediaFilePath, string configurationFile)
         {
             Console.WriteLine("* Uploading Asset to Media Services");
-            
+
             // Create an asset and upload the input media file to storage.
             IAsset asset = CreateAssetAndUploadSingleFile(inputMediaFilePath,
                 "My OCR Input Asset",
@@ -79,7 +81,7 @@ namespace OCR
 
             Console.WriteLine("* Creating new Job on Media Services");
             // Declare a new job.
-            IJob job = _context.Jobs.Create("My OCR Job");
+            IJob job = _context.Jobs.Create("RegExOCRJob" + asset.Id);
 
             // Get a reference to Azure Media OCR.
             string MediaProcessorName = "Azure Media OCR";
@@ -90,7 +92,7 @@ namespace OCR
             string configuration = File.ReadAllText(configurationFile);
 
             // Create a task with the encoding details, using a string preset.
-            ITask task = job.Tasks.AddNew("My OCR Task",
+            ITask task = job.Tasks.AddNew("RegExOCRTask" + asset.Id,
                 processor,
                 configuration,
                 TaskOptions.None);
@@ -99,15 +101,15 @@ namespace OCR
             task.InputAssets.Add(asset);
 
             // Add an output asset to contain the results of the job.
-            task.OutputAssets.AddNew("My OCR Output Asset", AssetCreationOptions.None);
+            task.OutputAssets.AddNew("RegExOCROutputAsset" + asset.Id, AssetCreationOptions.None);
 
             // Use the following event handler to check job progress.  
             job.StateChanged += new EventHandler<JobStateChangedEventArgs>(StateChanged);
-            Console.WriteLine("* Launching new Job on Media Services");
+            Console.WriteLine($"* Launching new Job {job.Name} on Media Services under Task {task.Name}");
 
             // Launch the job.
             job.Submit();
-           
+
             // Check job execution and wait for job to finish.
             Task progressJobTask = job.GetExecutionProgressTask(CancellationToken.None);
 
