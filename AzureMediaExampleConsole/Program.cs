@@ -12,20 +12,40 @@ namespace OCR
     class Program
     {
         // Read values from the App.config file.
-        private static readonly string _AADTenantDomain =
-            ConfigurationManager.AppSettings["AMSAADTenantDomain"];
-        private static readonly string _RESTAPIEndpoint =
-            ConfigurationManager.AppSettings["AMSRESTAPIEndpoint"];
-        private static readonly string _AMSClientId =
-            ConfigurationManager.AppSettings["AMSClientId"];
-        private static readonly string _AMSClientSecret =
-            ConfigurationManager.AppSettings["AMSClientSecret"];
+        private static readonly string _AADTenantDomain ;
+        private static readonly string _RESTAPIEndpoint;
+        private static readonly string _AMSClientId ;
+        private static readonly string _AMSClientSecret ;
 
         // Field for service context.
         private static CloudMediaContext _context = null;
 
+         static Program()
+         {
+            _AADTenantDomain = SafelyGetConfigValue("AMSAADTenantDomain");
+            _RESTAPIEndpoint = SafelyGetConfigValue("AMSRESTAPIEndpoint");
+            _AMSClientId = SafelyGetConfigValue("AMSClientId");
+            _AMSClientSecret = SafelyGetConfigValue("AMSClientSecret");
+
+        }
+
+        private static string SafelyGetConfigValue(string key)
+        {
+            string a="";
+            try
+            {
+                a = Environment.GetEnvironmentVariable(key);
+            }
+            finally
+            {
+                if(string.IsNullOrEmpty(a))a=ConfigurationManager.AppSettings[key];
+            }
+            return a;
+        }
+
         static void Main(string[] args)
         {
+            
             AzureAdTokenCredentials tokenCredentials =
                 new AzureAdTokenCredentials(_AADTenantDomain,
                     new AzureAdClientSymmetricKey(_AMSClientId, _AMSClientSecret),
