@@ -75,9 +75,9 @@ namespace ProcessOutputJson
             }
 
 
-            var matches = ExtractRegExMatches();
+            var matches = ExtractRegExMatches(_jsonOcrOutputfile);
 
-            ProcessOutputs(needJpegs, needVideo, matches);
+            ProcessOutputs(_videofile,needJpegs, needVideo, matches);
 
 
             Console.ForegroundColor = ConsoleColor.Black;
@@ -130,7 +130,7 @@ namespace ProcessOutputJson
 
         }
 
-        private static void ProcessOutputs(bool needJpegs, bool needVideo, List<JToken> matches)
+        public static void ProcessOutputs(string _videofile,bool needJpegs, bool needVideo, List<JToken> matches,string clipDuration="3")
         {
             string uNow = $"{DateTime.UtcNow:O}".Replace(":", "");
 
@@ -146,7 +146,7 @@ namespace ProcessOutputJson
                 var de = TimeSpan.FromMilliseconds(Math.Ceiling((1000*end) / timescale));
                 var tso = de - dt;
                 var tsot = tso.TotalSeconds;
-                if (tsot < 3) tsot = 3; //make min_vid_clip parameter
+                if (tsot < 3) tsot = double.Parse(clipDuration); //make min_vid_clip parameter
                 var origName = Path.GetFileNameWithoutExtension(_videofile);
                 var newSnippetFile = _videofile.Replace(origName??string.Empty, $"out_{uNow}_{i}_{origName}");
                 var acceleration=""; // -hwaccel cuvid
@@ -204,7 +204,7 @@ namespace ProcessOutputJson
             }
         }
         
-        private static List<JToken> ExtractRegExMatches()
+        public static List<JToken> ExtractRegExMatches(string _jsonOcrOutputfile)
         {
             var matches = new List<JToken>();
             var fileStream = new FileStream(_jsonOcrOutputfile, FileMode.Open);

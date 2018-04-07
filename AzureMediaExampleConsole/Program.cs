@@ -32,6 +32,24 @@ namespace OCR
             _RESTAPIEndpoint = SafelyGetConfigValue("AMSRESTAPIEndpoint");
             _AMSClientId = SafelyGetConfigValue("AMSClientId");
             _AMSClientSecret = SafelyGetConfigValue("AMSClientSecret");
+            AzureAdTokenCredentials tokenCredentials =
+                new AzureAdTokenCredentials(_AADTenantDomain,
+                    new AzureAdClientSymmetricKey(_AMSClientId, _AMSClientSecret),
+                    AzureEnvironments.AzureCloudEnvironment);
+
+
+            _context = new CloudMediaContext(new Uri(_RESTAPIEndpoint), new AzureAdTokenProvider(tokenCredentials));
+
+        }
+
+        public static IAsset GetAsset(string id)
+        {
+            return _context.Assets.First(x => x.Id == id);
+        }
+
+        public static IJob GetJob(string id)
+        {
+            return _context.Jobs.First(x => x.Id == id);
         }
 
         private static string SafelyGetConfigValue(string key)
@@ -51,14 +69,7 @@ namespace OCR
         public static void Main(string[] args, bool noConsole=false)
         {
             NoConsole = noConsole;
-            AzureAdTokenCredentials tokenCredentials =
-                new AzureAdTokenCredentials(_AADTenantDomain,
-                    new AzureAdClientSymmetricKey(_AMSClientId, _AMSClientSecret),
-                    AzureEnvironments.AzureCloudEnvironment);
-
-
-            _context = new CloudMediaContext(new Uri(_RESTAPIEndpoint), new AzureAdTokenProvider(tokenCredentials));
-            if (args.Length != 1) throw new ArgumentException("Missing argument, expecting <video>");
+           if (args.Length != 1) throw new ArgumentException("Missing argument, expecting <video>");// <switch>");
             // Run the OCR job.
             var filename = args[0];
             var jsonFilename = filename + ".ocrinput.json";
@@ -67,7 +78,14 @@ namespace OCR
             if (!File.Exists(filename) || /*!File.Exists(args[1]) ||*/ !Directory.Exists(outputFolder))
                 throw new FileNotFoundException();
 
-            var asset = RunOcrJob(filename, jsonFilename);
+           // if(args[1]=="/CreateVideoInputJson")
+            CreateVideoInputJson(filename,jsonFilename);
+
+           // if(args[1]== "/UploadOcrAsset")
+            var uploadAsset = UploadOcrAsset(filename);
+
+           // if(args[1]=="/RunOcrJob")
+            var asset = RunOcrJob(uploadAsset, jsonFilename);
             //@"C:\supportFiles\OCR\presentation.mp4",
             //                      @"C:\supportFiles\OCR\config.json");
 
@@ -78,9 +96,9 @@ namespace OCR
             if (!NoConsole) Console.ReadLine();
         }
 
-        static IAsset RunOcrJob(string inputMediaFilePath, string configurationFile)
+        static IAsset RunOcrJob(IAsset asset, string configurationFile)
         {
-            var asset = UploadOcrAsset(inputMediaFilePath);
+            
             IJob job = CreateOcrJob(configurationFile, asset);
 
             // Use the following event handler to check job progress.  
@@ -112,7 +130,7 @@ namespace OCR
 
 
 
-        private static void CreateVideoInputJson(string _videofile, string _jsonOcrInputfile, string language = "English", string textOrientation = "Auto", string width = "1920", string height = "1080")
+        public static void CreateVideoInputJson(string _videofile, string _jsonOcrInputfile, string language = "English", string textOrientation = "Auto", string width = "1920", string height = "1080")
         {
             using (var v = new VideoFileReader())
             {
@@ -152,7 +170,7 @@ namespace OCR
         }
 
 
-        private static IJob CreateOcrJob(string configurationFile, IAsset asset)
+        public static IJob CreateOcrJob(string configurationFile, IAsset asset)
         {
             if (!NoConsole) Console.WriteLine("* Creating new Job on Media Services");
             // Declare a new job.
@@ -187,7 +205,7 @@ namespace OCR
             return task;
         }
 
-        private static IAsset UploadOcrAsset(string inputMediaFilePath)
+        public static IAsset UploadOcrAsset(string inputMediaFilePath)
         {
             if (!NoConsole) Console.WriteLine("* Uploading Asset to Media Services");
 
@@ -208,7 +226,7 @@ namespace OCR
             return asset;
         }
 
-        static void DownloadAsset(IAsset asset, string outputDirectory)
+        public static void DownloadAsset(IAsset asset, string outputDirectory)
         {
             foreach (IAssetFile file in asset.AssetFiles)
             {
