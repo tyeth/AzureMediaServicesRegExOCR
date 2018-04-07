@@ -91,11 +91,13 @@ namespace ProcessOutputJson
             throw new NotImplementedException();
         }
 
-        private static void CreateVideoInputJson(string language = "English", string textOrientation = "Auto")
+        private static void CreateVideoInputJson(string language = "English", string textOrientation = "Auto",string width="1920", string height="1080")
         {
             using (var v = new VideoFileReader())
             {
                 v.Open(_videofile);
+                try{  height=v.Height.ToString();}catch{}
+                try{ width=v.Width.ToString();}catch{}
                 var jsonString =
                 #region json file contents with video width+height inserted
 @"  {
@@ -110,8 +112,8 @@ namespace ProcessOutputJson
                     {
                        ""Left"": 1,
                        ""Top"": 1,
-                       ""Width"": " + v.Width + @",
-                       ""Height"": " + v.Height + @"
+                       ""Width"": " + width + @",
+                       ""Height"": " + height + @"
                     }
              ]
         }
