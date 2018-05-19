@@ -130,7 +130,7 @@ namespace OCR
 
 
 
-        public static void CreateVideoInputJson(string _videofile, string _jsonOcrInputfile, string language = "English", string textOrientation = "Auto", string width = "1920", string height = "1080")
+        public static void CreateVideoInputJson(string _videofile, string _jsonOcrInputfile, string language = "English", string textOrientation = "AutoDetect", string width = "1920", string height = "1080")
         {
             using (var v = new VideoFileReader())
             {
